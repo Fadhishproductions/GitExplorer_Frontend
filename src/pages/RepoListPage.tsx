@@ -3,10 +3,11 @@ import { useParams } from 'react-router-dom';
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../redux/store';
-import { cacheRepos, cacheUser, removeUser } from '../redux/userSlice';
+import { cacheRepos, cacheUser, removeUser, setFriends } from '../redux/userSlice';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 import { getRepoIcon} from '../utils/getRepoIcon';
+import UserSearch from '../components/UserSearch';
 
 
 interface Repo {
@@ -20,7 +21,10 @@ const RepoListPage = () => {
   const dispatch = useDispatch();
   const cachedUser = useSelector((state: RootState) => state.user.users[username.toLowerCase()]);
   const cachedRepos = useSelector((state: RootState) => state.user.repos[username.toLowerCase()]);
-  const [user, setUser] = useState<any>(cachedUser || null);
+  const cachedFriends = useSelector(
+    (state: RootState) => state.user.friends[username.toLowerCase()]
+  );
+    const [user, setUser] = useState<any>(cachedUser || null);
   const [repos, setRepos] = useState<Repo[]>(cachedRepos || []);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -36,31 +40,49 @@ const [formData, setFormData] = useState({
     const fetchUserAndRepos = async () => {
       setLoading(true);
       try {
-        if (!cachedUser) {
-          // 1. Call your backend to store user
+        // Always sync local state with cache or fresh fetch
+        if (cachedUser) {
+          setUser(cachedUser);
+          setFormData({
+            bio: cachedUser.bio || '',
+            location: cachedUser.location || '',
+            blog: cachedUser.blog || '',
+          });
+        } else {
           const backendRes = await axios.post(`http://localhost:5000/api/users/${username}`);
           const userData = backendRes.data.user;
           setUser(userData);
+          setFormData({
+            bio: userData.bio || '',
+            location: userData.location || '',
+            blog: userData.blog || '',
+          });
           dispatch(cacheUser({ username, data: userData }));
         }
-
-        // 2. Fetch repos directly from GitHub
-        if (!cachedRepos) {
-            const githubUserRes = await axios.get(`https://api.github.com/users/${username}`);
-            const reposRes = await axios.get(githubUserRes.data.repos_url);
-            setRepos(reposRes.data);
-            dispatch(cacheRepos({ username, data: reposRes.data }));
-          }
-          
+  
+        if (cachedRepos) {
+          setRepos(cachedRepos);
+        } else {
+          const githubUserRes = await axios.get(`https://api.github.com/users/${username}`);
+          const reposRes = await axios.get(githubUserRes.data.repos_url);
+          setRepos(reposRes.data);
+          dispatch(cacheRepos({ username, data: reposRes.data }));
+        }
+  
+        if (!cachedFriends) {
+          const friendsRes = await axios.put(`http://localhost:5000/api/users/${username}/friends`);
+          dispatch(setFriends({ username, data: friendsRes.data.friends }));
+        }
       } catch (error) {
         console.error('Error fetching user or repos:', error);
       } finally {
         setLoading(false);
       }
     };
-
+  
     fetchUserAndRepos();
-  }, [username]);
+  }, [username, dispatch]);
+  
 
   const handleDeleteUser = async () => {
     const confirmed = window.confirm('Are you sure you want to delete this user?');
@@ -96,6 +118,7 @@ const [formData, setFormData] = useState({
 
   return (
     <div>
+      <UserSearch/>
 
 {user && (
   <div style={{
@@ -103,7 +126,8 @@ const [formData, setFormData] = useState({
     alignItems: 'center',
     gap: '20px',
     marginBottom: '2rem',
-    padding:"40px",
+    paddingLeft:"15px",
+    paddingBottom:"15px",
     borderBottom:"1px solid #D3D3D3 "
   }}>
     <img src={user.avatar_url} alt="avatar" width={100} style={{ borderRadius: '50%' }} />
@@ -115,6 +139,37 @@ const [formData, setFormData] = useState({
       <p><strong>Followers:</strong> {user.followers}</p>
       <p><strong>Following:</strong> {user.following}</p>
      </div>
+
+{/* mutual friends */}
+{cachedFriends && cachedFriends?.length > 0 && (
+  <div  >
+    <h4 style={{ marginBottom: '0.5rem' }}>Mutual Friends</h4>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+      {cachedFriends.map((friend: string) => (
+        <div key={friend}>
+          <button
+            onClick={() => navigate(`/user/${friend}`)}
+            style={{
+              padding: '6px 12px',
+              border: '1px solid #ccc',
+              background: '#f0f0f0',
+              borderRadius: '20px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: 500,
+              transition: 'background 0.3s',
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = '#dfefff'}
+            onMouseLeave={e => e.currentTarget.style.background = '#f0f0f0'}
+          >
+            @{friend}
+          </button>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
       <button
         onClick={() => navigate(`/user/${username}/followers`)}
         style={{
@@ -160,6 +215,8 @@ const [formData, setFormData] = useState({
 >
   Delete Profile
 </button>
+
+
 
     </div>
     
@@ -259,10 +316,14 @@ const [formData, setFormData] = useState({
 )}
 
 
+
+
   </div>
 )}
 
-      <h3 style={{marginLeft:"10px"}}>Repositories:</h3>
+
+
+      <h3 style={{marginLeft:"15px"}}>Repositories</h3>
       <div
   style={{
     display: 'grid',

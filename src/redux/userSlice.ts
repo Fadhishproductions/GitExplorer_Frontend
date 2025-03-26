@@ -4,12 +4,14 @@ interface UserState {
   users: Record<string, any>;
   repos: Record<string, any[]>;
   followers: Record<string, any[]>;
+  friends: Record<string, string[]>;
 }
 
 const initialState: UserState = {
   users: {},
   repos: {},
   followers: {},
+  friends:{}
 };
 
 const userSlice = createSlice({
@@ -31,6 +33,9 @@ const userSlice = createSlice({
         delete state.repos[uname];
         delete state.followers[uname];
       },
+      setFriends(state, action: PayloadAction<{ username: string; data: string[] }>) {
+        state.friends[action.payload.username.toLowerCase()] = action.payload.data;
+      }
     },
   });
   
@@ -40,5 +45,6 @@ const userSlice = createSlice({
     cacheRepos,
     cacheFollowers,
     removeUser,
+    setFriends
   } = userSlice.actions;
   export default userSlice.reducer;
