@@ -33,7 +33,7 @@ const [formData, setFormData] = useState({
   location: user?.location || '',
   blog: user?.blog || '',
 });
-
+const apiUrl = import.meta.env.VITE_API_URL;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -49,7 +49,7 @@ const [formData, setFormData] = useState({
             blog: cachedUser.blog || '',
           });
         } else {
-          const backendRes = await axios.post(`http://localhost:5000/api/users/${username}`);
+           const backendRes = await axios.post(`${apiUrl}/api/users/${username}`);
           const userData = backendRes.data.user;
           setUser(userData);
           setFormData({
@@ -70,7 +70,7 @@ const [formData, setFormData] = useState({
         }
   
         if (!cachedFriends) {
-          const friendsRes = await axios.put(`http://localhost:5000/api/users/${username}/friends`);
+           const friendsRes = await axios.put(`${apiUrl}/users/${username}/friends`);
           dispatch(setFriends({ username, data: friendsRes.data.friends }));
         }
       } catch (error) {
@@ -90,7 +90,7 @@ const [formData, setFormData] = useState({
     if (!confirmed) return;
   
     try {
-      await axios.delete(`http://localhost:5000/api/users/${username}/delete`);
+      await axios.delete(`${apiUrl}/users/${username}/delete`);
       dispatch(removeUser({ username }));
       alert('User soft deleted successfully ✅');
       navigate('/'); // Go back to Home
@@ -225,7 +225,7 @@ const [formData, setFormData] = useState({
     onSubmit={async (e) => {
       e.preventDefault();
       try {
-        const res = await axios.put(`http://localhost:5000/api/users/${username}/update`, formData);
+        const res = await axios.put(`${apiUrl}/users/${username}/update`, formData);
         setUser(res.data.user);
         dispatch(cacheUser({ username, data: res.data.user }));
         setEditing(false);

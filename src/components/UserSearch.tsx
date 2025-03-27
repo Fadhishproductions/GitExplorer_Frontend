@@ -4,12 +4,12 @@ import axios from 'axios';
 const UserSearch = () => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
-
+  const apiUrl = import.meta.env.VITE_API_URL;
   const handleSearch = async () => {
     if (!query.trim()) return;
 
     try {
-      const res = await axios.get(`http://localhost:5000/api/users/search?query=${query}`);
+      const res = await axios.get(`${apiUrl}/users/search?query=${query}`);
       setResults(res.data.users);
     } catch (err) {
       console.error('Search failed', err);
